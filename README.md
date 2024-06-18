@@ -82,6 +82,7 @@ func (s *Semaphore) Release() {
 	<-s.ch
 }
 
+func main() {
 	numTasks := 1_000
 	throttle := 10
 	sem := &Semaphore{ch: make(chan struct{}, throttle)}
@@ -102,6 +103,7 @@ func (s *Semaphore) Release() {
 				for t := range in {
 					sem.Acquire()
 					out <- t
+					time.Sleep(10 * time.Millisecond) // emulate long running task
 					sem.Release()
 				}
 			}()
@@ -113,6 +115,7 @@ func (s *Semaphore) Release() {
 		s := fmt.Sprintf("*%d*\n", r)
 		fmt.Print(s)
 	}
+}
 ```
 
 
