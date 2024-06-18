@@ -82,5 +82,18 @@ func (s *Semaphore) Release() {
 ```
 
 
+**Timeouts**
+
+The design template with timeout engages **case** operator.
+```
+ c1 := make(chan string, 1)
+    go func() {
+        time.Sleep(2 * time.Second)
+        c1 <- "result 1"
+    }()
+```
+
+
+
 
 
