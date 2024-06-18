@@ -1,7 +1,7 @@
 **Working pool**
 
 
-**Using buffered channel**
+**Using buffered channel with known number of tasks**
 
 Based on buffered channel.
 The solution is based on the Go feature: writing to buffered channel is blocked once it's full.
@@ -11,13 +11,14 @@ So, given the limit of simultaneously working tasks **numWorkers** we create a b
 ```
 	numWorkers := 10
 	totalTasksNum := 1_000
-	
-	tasks := make(chan Task) // , 1_000)
-	res := make(chan string, totalTasksNum)
-	for i := 0; i < numWorkers; i++ {
+
+	tasks := make(chan Task, totalTasksNum) // wide input
+	res := make(chan string, totalTasksNum) // wide output
+	for i := 0; i < numWorkers; i++ {       // narrow processors
 		go func(workerNum int) {
 			for task := range tasks {
 				res <- fmt.Sprintf("worker #%d, task #%d\n", workerNum, task.data)
+				time.Sleep(10 * time.Millisecond) // emulate long running task
 			}
 		}(i)
 	}
@@ -25,9 +26,42 @@ So, given the limit of simultaneously working tasks **numWorkers** we create a b
 		tasks <- Task{i}
 	}
 	close(tasks)
-	
+
 	for i := 0; i < totalTasksNum; i++ {
 		fmt.Println(<-res)
+	}
+```
+
+Or, we could engage WorkGroup and eliminate knowledge of number of tasks at received end:
+```
+ 	numWorkers := 10
+	totalTasksNum := 1_000
+	wg := sync.WaitGroup{}
+
+	tasks := make(chan Task, totalTasksNum) // wide input
+	res := make(chan string, totalTasksNum) // wide output
+	go func() {
+		for i := 0; i < numWorkers; i++ { // narrow processors
+			wg.Add(1)
+			go func(workerNum int) {
+				defer wg.Done()
+				for task := range tasks {
+					res <- fmt.Sprintf("worker #%d, task #%d\n", workerNum, task.data)
+					time.Sleep(10 * time.Millisecond) // emulate long running task
+				}
+			}(i)
+		}
+		wg.Wait()
+		close(res)
+	}()
+
+	for i := 0; i < totalTasksNum; i++ {
+		tasks <- Task{i}
+	}
+	close(tasks)
+
+	for r := range res {
+		fmt.Println(r)
 	}
 ```
 
@@ -92,6 +126,18 @@ The design template with timeout engages **case** operator.
         c1 <- "result 1"
     }()
 ```
+
+
+**Check if channel is closed**
+
+Reading from a closed channel succeeds immediately, returning the zero value of the underlying type. The optional second return value is true if the value received was delivered by a successful send operation to the channel, or false if it was a zero value generated because the channel is closed and empty.
+
+```
+_, ok := <-jobs
+    fmt.Println("received more jobs:", ok)
+```
+
+
 
 
 
