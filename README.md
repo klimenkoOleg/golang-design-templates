@@ -141,8 +141,50 @@ _, ok := <-jobs
 ```
 
 
+**Timers**
+Timers represent a single event in the future.
+
+```
+    timer1 := time.NewTimer(2 * time.Second)
+    <-timer1.C
+    timer1.Stop()
+```
+
+**Tickers**
+Tickers are for when you want to do something repeatedly at regular intervals.
+```
+ticker := time.NewTicker(500 * time.Millisecond)
+for {
+            select {
+            case <-done:
+                return
+            case t := <-ticker.C:
+                fmt.Println("Tick at", t)
+            }
+	    ticker.Stop()
+}
+```
+
+**Rate limiting**
+
+```
+    requests := make(chan int, 5)
+    for i := 1; i <= 5; i++ {
+        requests <- i
+    }
+    close(requests)
+
+    limiter := time.Tick(200 * time.Millisecond)
+
+    for req := range requests {
+        <-limiter
+        fmt.Println("request", req, time.Now())
+    }
+```
 
 
+**Goroutine memary pattern**
 
+Channel-based approach aligns with Go’s ideas of sharing memory by communicating and having each piece of data owned by exactly 1 goroutine.
 
 
